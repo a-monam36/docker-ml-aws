@@ -1,92 +1,87 @@
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
+from sqlalchemy import create_engine, Column, Integer, Float, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 import datetime
+import joblib
+import os
+import boto3
 
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./ml_logs.db")
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", None)
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./ml_logs.db"
+if "sqlite" in SQLALCHEMY_DATABASE_URL:
+    engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-
-
-#make session 
-
-sessionLocal = sessionmaker(autocommit= False, autoflush = False, bind= engine )
-
-
-
-
-Base = declarative_base() # using the base class 
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
 class PredictionLog(Base):
+    __tablename__ = "prediction_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    sqft = Column(Float)
+    bedrooms = Column(Integer)
+    age = Column(Integer)
+    predicted_price = Column(Float)
+    latency_ms = Column(Float)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
-    __tablename__ = "prediction_log"
+Base.metadata.create_all(bind=engine)
 
-    id = Column(Integer, primary_key = True, index= True)
+app = FastAPI()
 
-    # input column 
+# Downloads the model from S3 if a bucket name is provided via AWS EC2
+if S3_BUCKET_NAME:
+    s3 = boto3.client('s3')
+    s3.download_file(S3_BUCKET_NAME, 'model.joblib', 'model.joblib')
 
-    input_text = Column(String)
+try:
+    model = joblib.load("model.joblib")
+except FileNotFoundError:
+    model = None
 
-    #prediction column
-
-    prediction_text = Column(String)
-
-    # timestamp column
-
-    timestamp = Column(DateTime, default= datetime.datetime.utc.now)
-
-    Base.metadata.create_all(bind= engine )
-
-
+class PropertyFeatures(BaseModel):
+    sqft: float
+    bedrooms: int
+    age: int
 
 def get_db():
-
-    db = sessionLocal()
-
-
+    db = SessionLocal()
     try:
-
         yield db
     finally:
-
         db.close()
 
-
-
-
-app = FASTAPI()
-
-class PredictionRequest(BaseModel):
-    input_text: str
-
 @app.post("/predict")
+def make_prediction(features: PropertyFeatures, db: Session = Depends(get_db)):
+    start_time = datetime.datetime.utcnow()
+    
+    if model:
+        prediction = model.predict([[features.sqft, features.bedrooms, features.age]])[0]
+    else:
+        prediction = 0.0
 
-async def make_prediction(request: PredictionRequest, db: Session = Depends(get_db)):
-
-    dummy_prediction = len(request.input_text) *1.5
+    end_time = datetime.datetime.utcnow()
+    latency = (end_time - start_time).total_seconds() * 1000
 
     new_log = PredictionLog(
-        input_text=request.input_text, predicted_value=dummy_prediction
+        sqft=features.sqft,
+        bedrooms=features.bedrooms,
+        age=features.age,
+        predicted_price=float(prediction),
+        latency_ms=latency
     )
-
+    
     db.add(new_log)
-
     db.commit()
-
-
     db.refresh(new_log)
-
+    
     return {
-        
         "status": "success",
         "log_id": new_log.id,
-        "input": request.input_text,
-        "prediction": dummy_prediction,
+        "prediction": round(prediction, 2),
+        "latency_ms": round(latency, 2)
     }
-
-
-
-
-
