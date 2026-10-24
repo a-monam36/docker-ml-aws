@@ -2,7 +2,7 @@
 
 An end-to-end, production-ready Machine Learning serving microservice built with **FastAPI** and an interactive **Streamlit** dashboard, architected for deployment on **AWS** with zero-cost local simulation capabilities.
 
-This project demonstrates a full MLOps lifecycle: transitioning a Scikit-Learn regression model into a resilient inference API featuring dynamic artifact loading, relational telemetry logging, dual-mode execution (local SQLite vs. cloud PostgreSQL), and a full client UI for real-time appraisals and audit inspection.
+🔗 **Live Interactive Demo:** [monam-property-valuation.streamlit.app](https://monam-property-valuation.streamlit.app/)
 
 ---
 
@@ -19,6 +19,7 @@ This project demonstrates a full MLOps lifecycle: transitioning a Scikit-Learn r
 
 ## ✨ Core Features
 
+- **Live Web Interface:** Hosted publicly on Streamlit Cloud for real-time model appraisal demos and log monitoring ([Live App](https://monam-property-valuation.streamlit.app/)).
 - **Dual-Mode Artifact Loading (Local / AWS S3):** 
   - *Cloud:* Securely streams `model.joblib` from an Amazon S3 bucket on startup via `boto3` and IAM Instance Profiles.
   - *Local:* Gracefully falls back to local disk storage (`model.joblib`) if S3 configurations or bucket credentials are absent, enabling zero-cloud-cost testing.
