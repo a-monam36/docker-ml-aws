@@ -11,8 +11,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Backend service configuration
-DEFAULT_BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+# Backend service configuration (Checks st.secrets first, then environment variable, then default)
+DEFAULT_BACKEND_URL = (
+    st.secrets.get("API_URL")
+    or st.secrets.get("BACKEND_URL")
+    or os.getenv("BACKEND_URL")
+    or os.getenv("API_URL")
+    or "https://real-estate-api-5hpb.onrender.com"
+)
 
 # Sidebar Configuration
 st.sidebar.title("⚙️ Service Configuration")
@@ -22,7 +28,7 @@ backend_url = st.sidebar.text_input("Backend API URL", value=DEFAULT_BACKEND_URL
 backend_online = False
 service_info = {}
 try:
-    health_res = requests.get(f"{backend_url.rstrip('/')}/", timeout=3)
+    health_res = requests.get(f"{backend_url.rstrip('/')}/", timeout=15)
     if health_res.status_code == 200:
         backend_online = True
         service_info = health_res.json()
@@ -111,7 +117,7 @@ if submit_btn:
             response = requests.post(
                 f"{backend_url.rstrip('/')}/predict",
                 json=payload,
-                timeout=5
+                timeout=15
             )
         
         if response.status_code == 200:
@@ -175,7 +181,7 @@ with col_refresh:
     refresh_logs = st.button("🔄 Refresh Logs", use_container_width=True)
 
 try:
-    logs_res = requests.get(f"{backend_url.rstrip('/')}/logs", timeout=3)
+    logs_res = requests.get(f"{backend_url.rstrip('/')}/logs", timeout=15)
     if logs_res.status_code == 200:
         logs_data = logs_res.json()
         if logs_data:
