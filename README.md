@@ -1,6 +1,12 @@
+
+
+
+
 # Cloud-Native Real Estate Price Prediction & Telemetry Engine
 
 An end-to-end, production-ready Machine Learning serving microservice built with **FastAPI** and an interactive **Streamlit** dashboard, architected for deployment on **AWS** with zero-cost local simulation capabilities.
+
+https://github.com/user-attachments/assets/ad8ee4d3-f303-4c5c-8ee0-1bea6854bc7c
 
 🔗 **Live Interactive Demo:** [monam-property-valuation.streamlit.app](https://monam-property-valuation.streamlit.app/)
 
